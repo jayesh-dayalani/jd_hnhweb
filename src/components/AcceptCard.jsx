@@ -1,7 +1,11 @@
-import { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import supabase from "../../supabase"
 import { useDispatch, useSelector } from "react-redux"
-import { addOperator, addService, addServiceValue, addSocks, addSocksValue, clearForm } from "../redux/FormSlice"
+import { addAmount, addDiscount, addMixedCash, addMixedOnline, addOperator, addPayment, addService, addServiceValue, addSocks, addSocksValue, clearForm } from "../redux/FormSlice"
+// import escpos from 'escpos';
+// import 'escpos-usb';
+import { useReactToPrint } from "react-to-print"
+import PrintComponent from "./PrintComponent"
 
 export default function AcceptCard(fromthere) {
     const myredux = useSelector(state => state.form)
@@ -63,29 +67,33 @@ export default function AcceptCard(fromthere) {
     }
     // socks end
 
-
     // discount start
     const [discountToggle, setDiscountToggle] = useState(false)
-    // const [fetchedDiscount, setFetchedDiscount] = useState()
-    const [disocuntSaved, setDiscountSaved] = useState(false)
-
-    // const fetchDiscountFunc = async () => {
-    //     const { data } = await supabase.from('discounts').select('*')
-    //     setFetchedSocks(data)
-    // }
-
     const [inputDiscountValue, setInputDiscountValue] = useState();
-    const saveDiscountToRedux = (event) => {
-        // console.log('Discount: selected: ', socksSelected, socksSelectedValue);
-        // dispatch(addSocks(socksSelected))
-        // dispatch(addSocksValue(socksSelectedValue))
-        // setSocksToggle(false)
-        // setSocksSaved(true)
-        setInputDiscountValue(event.target.value)
-        console.log(event.target.value,'-> discount percent');
-    }
+    const [discountSaved, setDiscountSaved] = useState(false)
 
+    const saveDiscountToRedux = (event) => {
+        setInputDiscountValue(event.target.value)
+        dispatch(addDiscount(event.target.value))
+        console.log(event.target.value, '-> discount percent');
+        console.log(myredux.service_value, '->service', myredux.socks_value, '->socks');
+    }
     // discount end
+
+    // calculations
+    const [amount, setAmount] = useState()
+    const [subTotal, setSubtotal] = useState()
+    const [toPay, setToPay] = useState()
+    const [amountCollected, setAmountCollected] = useState(false)
+    const calculateAmount = () => {
+        setPaymentSaved(false)
+        console.log('calculated');
+        setSubtotal(Number(myredux?.service_value) + Number(myredux?.socks_value))
+        setToPay(Number(myredux?.service_value) - Number(myredux?.service_value) * Number(myredux?.discount) / 100 + Number(myredux?.socks_value))
+        dispatch(addAmount(Number(myredux?.service_value) - Number(myredux?.service_value) * Number(myredux?.discount) / 100 + Number(myredux?.socks_value)))
+        console.log('sub total->', subTotal, 'calculated total->', myredux?.amount);
+    }
+    // calculations end
 
     // payment start
     const [paymentToggle, setPaymentToggle] = useState(false)
@@ -100,173 +108,222 @@ export default function AcceptCard(fromthere) {
 
     const savePaymentToRedux = (paymentSelected, paymentSelectedValueCash, paymentSelectedValueOnline) => {
         console.log('Services selected: ', paymentSelected, paymentSelectedValueCash, paymentSelectedValueOnline);
-        // dispatch(addSocks(socksSelected))
-        // dispatch(addSocksValue(socksSelectedValue))
-        // setPaymentToggle(false)
-        // setPaymentSaved(true)
+        calculateAmount()
+        if (mixedEnabled) {
+            if (Number(paymentSelectedValueCash) + Number(paymentSelectedValueOnline) === myredux?.amount) {
+                console.log('sexy -> dispatch');
+                dispatch(addPayment(paymentSelected))
+                dispatch(addMixedCash(paymentSelectedValueCash))
+                dispatch(addMixedOnline(paymentSelectedValueOnline))
+                setPaymentSaved(true)
+                setPaymentToggle(false)
+            }
+            else {
+                console.log('wrong sum xxxxx');
+            }
+        }
+        else {
+            console.log('sexy -> dispatch notmixed');
+            dispatch(addPayment(paymentSelected))
+            dispatch(addMixedCash(paymentSelectedValueCash))
+            dispatch(addMixedOnline(paymentSelectedValueOnline))
+            setPaymentSaved(true)
+            setPaymentToggle(false)
+        }
     }
 
     const [inputValueCash, setInputValueCash] = useState();
-
     const handleInputChangeCash = (event) => {
         setInputValueCash(event.target.value);
+        savePaymentToRedux('Mixed', event.target.value, inputValueOnline)
         console.log(event.target.value, '->cash');
     };
 
     const [inputValueOnline, setInputValueOnline] = useState();
-
     const handleInputChangeOnline = (event) => {
         setInputValueOnline(event.target.value);
+        savePaymentToRedux('Mixed', inputValueCash, event.target.value)
         console.log(event.target.value, '->online');
     };
     // payment end
 
+    // print
+    // Create a ref to hold the print component
+    const componentRef = useRef();
 
+    // Function to handle print
+    const handlePrint = useReactToPrint({
+        content: () => componentRef.current,
+    });
+
+    // Define PrintComponent inside AcceptCard using React.forwardRef
+    // const PrintComponent = React.forwardRef((props, ref) => (
+    //     <div ref={ref}>
+    //         hello
+    //     </div>
+    // ))
+
+    const printFunc = () => {
+        handlePrint();
+    };
+    // print end
 
 
     useEffect(() => {
+
         fetchOperatorsFunc()
         fetchServicesFunc()
         fetchSocksFunc()
         console.log('from there ->>', fromthere.item.bill_no);
+
+
     }, [])
 
     return (
         <div className="w-[90%] mt-5 p-3 space-y-2">
+
+
             {/* operator */}
-            <div className="w-full bg-blue-300 rounded-xl p-2" >
+            <div className="w-full bg-blue-300 rounded-xl p-2">
                 <div onClick={() => {
                     fetchOperatorsFunc()
                     setOperatorToggle(true)
-                }}> {operatorSaved ? myredux?.operator : 'Tap to select Operator'}</div>
-
-                {
-                    operatorToggle ? <>
-                        <div className="space-y-1 mt-2">
-
-                            {
-                                fetchedOperators?.map((item, index) => (
-                                    <div key={index} className="w-full rounded-lg bg-white p-2" onClick={() => { saveOperatorToRedux(item.name) }}>
-                                        {item?.name}
-                                    </div>
-                                ))
-                            }
-
-                        </div>
-
-                    </> : <></>
-                }
+                }}>
+                    {operatorSaved ? myredux?.operator : 'Tap to select Operator'}
+                </div>
+                {operatorToggle ? (
+                    <div className="space-y-1 mt-2">
+                        {fetchedOperators?.map((item, index) => (
+                            <div key={index} className="w-full rounded-lg bg-white p-2" onClick={() => {
+                                saveOperatorToRedux(item.name)
+                            }}>
+                                {item?.name}
+                            </div>
+                        ))}
+                    </div>
+                ) : null}
             </div>
             {/* operator end */}
 
-
             {/* service */}
-            <div className="w-full bg-blue-300 rounded-xl p-2" >
+            <div className="w-full bg-blue-300 rounded-xl p-2">
                 <div onClick={() => {
                     fetchServicesFunc()
                     setServicesToggle(true)
-                }}> {servicesSaved ? myredux?.service : 'Tap to select Service'}</div>
-
-                {
-                    servicesToggle ? <>
-                        <div className="space-y-1 mt-2">
-
-                            {
-                                fetchedServices?.map((item, index) => (
-                                    <div key={index} className="w-full rounded-lg bg-white p-2" onClick={() => { saveServicesToRedux(item.name, item.value) }}>
-                                        {item?.name}
-                                    </div>
-                                ))
-                            }
-
-                        </div>
-
-                    </> : <></>
-                }
+                }}>
+                    {servicesSaved ? myredux?.service : 'Tap to select Service'}
+                </div>
+                {servicesToggle ? (
+                    <div className="space-y-1 mt-2">
+                        {fetchedServices?.map((item, index) => (
+                            <div key={index} className="w-full rounded-lg bg-white p-2" onClick={() => {
+                                saveServicesToRedux(item.name, item.value)
+                            }}>
+                                {item?.name}
+                            </div>
+                        ))}
+                    </div>
+                ) : null}
             </div>
             {/* service end */}
 
-
             {/* socks */}
-            <div className="w-full bg-blue-300 rounded-xl p-2" >
+            <div className="w-full bg-blue-300 rounded-xl p-2">
                 <div onClick={() => {
                     fetchSocksFunc()
                     setSocksToggle(true)
-                }}> {socksSaved ? myredux?.socks : 'Tap to select Socks'}</div>
-
-                {
-                    socksToggle ? <>
-                        <div className="space-y-1 mt-2">
-
-                            {
-                                fetchedSocks?.map((item, index) => (
-                                    <div key={index} className="w-full rounded-lg bg-white p-2" onClick={() => { saveSocksToRedux(item.name, item.value) }}>
-                                        {item?.name}
-                                    </div>
-                                ))
-                            }
-
-                        </div>
-
-                    </> : <></>
-                }
+                }}>
+                    {socksSaved ? myredux?.socks : 'Tap to select Socks'}
+                </div>
+                {socksToggle ? (
+                    <div className="space-y-1 mt-2">
+                        {fetchedSocks?.map((item, index) => (
+                            <div key={index} className="w-full rounded-lg bg-white p-2" onClick={() => {
+                                saveSocksToRedux(item.name, item.value)
+                            }}>
+                                {item?.name}
+                            </div>
+                        ))}
+                    </div>
+                ) : null}
             </div>
             {/* socks end */}
 
             {/* discount */}
-            <div className="w-full bg-blue-300 rounded-xl p-2" >
-                <input type="text" value={inputDiscountValue} onChange={saveDiscountToRedux} />
+            <div className="w-full bg-blue-300 rounded-xl p-2 flex">
+                <div className="w-[40%]">Discount :</div>
+                <input type="text" value={inputDiscountValue} onChange={saveDiscountToRedux} className="bg-blue-300 text-center w-[60%]" />
             </div>
             {/* discount end */}
+
+            <div className="w-full bg-blue-300 rounded-xl p-2 text-center" onClick={() => calculateAmount()}>Tap to Calculate Amount: {myredux?.amount}</div>
+
             {/* payment */}
-            <div className="w-full bg-blue-300 rounded-xl p-2" >
+            <div className="w-full bg-blue-300 rounded-xl p-2">
                 <div onClick={() => {
                     fetchPaymentFunc()
                     setPaymentToggle(true)
                     setMixedEnabled(false)
-                }}> {paymentSaved ? myredux?.payment : 'Tap to select Payment Mode'}</div>
-
-                {
-                    paymentToggle ? <>
-                        <div className="space-y-1 mt-2">
-
-                            {
-                                fetchedPayment?.map((item, index) => (
-                                    <div key={index} className="w-full rounded-lg bg-white p-2" onClick={() => {
-                                        if (item.name == 'Mixed') {
-                                            setMixedEnabled(true)
-                                        }
-                                        else {
-                                            savePaymentToRedux(item.name, 0, 0)
-                                            setMixedEnabled(false)
-                                        }
-                                    }}>
-                                        {item?.name}
-                                    </div>
-                                ))
-                            }
-
-                            {
-                                mixedEnabled ?
-                                    <div className=" p-2 w-[100%] space-y-2">
-                                        <div className="flex">
-                                            <div className="p-1 w-[40%]">Cash :</div>
-                                            <input type="text" value={inputValueCash} onChange={handleInputChangeCash} className="w-[60%] p-1 rounded-lg text-center" />
-                                        </div>
-                                        <div className="flex">
-                                            <div className="p-1 w-[40%]">Online :</div>
-                                            <input type="text" value={inputValueOnline} onChange={handleInputChangeOnline} className="w-[60%] p-1 rounded-lg text-center" />
-                                        </div>
-                                    </div>
-                                    : <></>}
-                        </div>
-
-                    </> : <></>
-                }
+                }}>
+                    {paymentSaved ? myredux?.payment : 'Tap to select Payment Mode'}
+                </div>
+                {paymentToggle ? (
+                    <div className="space-y-1 mt-2">
+                        {fetchedPayment?.map((item, index) => (
+                            <div key={index} className="w-full rounded-lg bg-white p-2" onClick={() => {
+                                if (item.name === 'Mixed') {
+                                    setMixedEnabled(true)
+                                } else {
+                                    savePaymentToRedux(item.name, 0, 0)
+                                    setMixedEnabled(false)
+                                }
+                            }}>
+                                {item?.name}
+                            </div>
+                        ))}
+                        {mixedEnabled ? (
+                            <div className="p-2 w-[100%] space-y-2">
+                                <div className="flex">
+                                    <div className="p-1 w-[40%]">Cash :</div>
+                                    <input type="text" value={inputValueCash} onChange={handleInputChangeCash} className="w-[60%] p-1 rounded-lg text-center" />
+                                </div>
+                                <div className="flex">
+                                    <div className="p-1 w-[40%]">Online :</div>
+                                    <input type="text" value={inputValueOnline} onChange={handleInputChangeOnline} className="w-[60%] p-1 rounded-lg text-center" />
+                                </div>
+                            </div>
+                        ) : null}
+                    </div>
+                ) : null}
             </div>
             {/* payment end */}
 
 
+
+            {/* print */}
+            <div className="bg-white  flex">
+                <div className="hidden">
+                    {/* xxxxxxxxxxxxxxxxxxxxxx */}
+                    <PrintComponent ref={componentRef} data={
+                        {
+                            bill_no: fromthere.item.bill_no,
+                            name: fromthere.item.name,
+                            service: myredux.service,
+                            service_value : myredux.service_value,
+                            socks: myredux.socks,
+                            socks_value : myredux.socks_value,
+                            subTotal : subTotal,
+                            discount : myredux.discount,
+                            amount: myredux.amount
+
+                        }
+                    } />
+                </div>
+                <div className="bg-blue-300 mx-auto rounded-xl p-2 pl-3 pr-3" onClick={() => printFunc()}>
+                    Print
+                </div>
+            </div>
+            {/* print end */}
         </div>
     )
 }
