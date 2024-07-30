@@ -163,8 +163,38 @@ export default function AcceptCard(fromthere) {
     //     </div>
     // ))
 
-    const printFunc = () => {
+    const printFunc = async () => {
+        const { error } = await supabase.from('bills_printed').insert({
+            bill_no: fromthere.item.bill_no,
+            name: fromthere.item.name,
+            service: myredux.service,
+            service_value: myredux.service_value,
+            socks: myredux.socks,
+            socks_value: myredux.socks_value,
+            subTotal: subTotal,
+            discount: myredux.discount,
+            amount: myredux.amount,
+            phone: fromthere.item.phone,
+            operator: myredux.operator,
+            payment: myredux.payment,
+            mixed_cash: myredux.mixed_cash,
+            mixed_online: myredux.mixed_online,
+        })
+        if (error) {
+            console.log(error, 'in bills_printed');
+        }
+
+        const { error2 } = await supabase
+            .from('trampolinemaster')
+            .update({ status: 'accepted' })
+            .eq('bill_no', fromthere.item.bill_no)
+        if (error2) {
+            console.log(error2,'in trampoline master');
+        }
+
         handlePrint();
+
+        
     };
     // print end
 
@@ -175,7 +205,6 @@ export default function AcceptCard(fromthere) {
         fetchServicesFunc()
         fetchSocksFunc()
         console.log('from there ->>', fromthere.item.bill_no);
-
 
     }, [])
 
@@ -309,12 +338,18 @@ export default function AcceptCard(fromthere) {
                             bill_no: fromthere.item.bill_no,
                             name: fromthere.item.name,
                             service: myredux.service,
-                            service_value : myredux.service_value,
+                            service_value: myredux.service_value,
                             socks: myredux.socks,
-                            socks_value : myredux.socks_value,
-                            subTotal : subTotal,
-                            discount : myredux.discount,
-                            amount: myredux.amount
+                            socks_value: myredux.socks_value,
+                            subTotal: subTotal,
+                            discount: myredux.discount,
+                            amount: myredux.amount,
+                            phone: fromthere.item.phone,
+                            operator: myredux.operator,
+                            payment: myredux.payment,
+                            mixed_cash: myredux.mixed_cash,
+                            mixed_online: myredux.mixed_online,
+
 
                         }
                     } />
