@@ -8,7 +8,7 @@ export default function PendingForms() {
         console.log('hie');
         const { data, error } = await supabase.from('trampolinemaster').select('*').eq('status', 'pending').order('created_at', { ascending: false })
         if (data) setCardList(data)
-        if (error) alert(error)
+        if (error) console.log(error)
     }
     useEffect(() => {
         fetchData()

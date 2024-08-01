@@ -2,13 +2,14 @@ import { useState } from "react";
 import AcceptCard from "./AcceptCard";
 import { useDispatch } from "react-redux";
 import { clearForm } from "../redux/FormSlice";
+import supabase from "../../supabase";
 
 export default function CardComp(item) {
     console.log(item);
     const dispatch = useDispatch()
     const [toggle, setToggle] = useState(false)
 
-    
+
     return (
         <>
 
@@ -20,7 +21,17 @@ export default function CardComp(item) {
                 <img src={item.item?.sign} alt="box_img" className="w-[75px] mb-4" />
 
                 <div className="flex space-x-5">
-                    <div className="bg-blue-300 p-2 rounded-lg">Reject</div>
+                    <div className="bg-blue-300 p-2 rounded-lg" onClick={async () => {
+                        const { data } = await supabase
+                            .from('trampolinemaster')
+                            .update({ status: 'rejected' })
+                            .eq('bill_no', item.item.bill_no)
+
+                        if (data) {
+                            
+                            console.log(item.item.bill_no, '  xxx');
+                        }
+                    }}>Reject</div>
                     <div className="bg-blue-300 p-2 rounded-lg" onClick={() => {
                         if (toggle) {
                             dispatch(clearForm())
@@ -30,7 +41,7 @@ export default function CardComp(item) {
                             setToggle(true)
                         }
 
-                    }}>{toggle ? 'Cancle' : 'Accept'}</div>
+                    }}>{toggle ? 'Cancel' : 'Accept'}</div>
                 </div>
                 {
                     toggle ?

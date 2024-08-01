@@ -1,5 +1,4 @@
 import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
 import { Provider } from 'react-redux'
 import MyStore from './redux/MyStore.js'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
@@ -13,7 +12,7 @@ import Inventory from './components/Inventory.jsx'
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <><NavComp /><App /></>
+    element: <PendingForms />
   },
   {
     path: '/pending',

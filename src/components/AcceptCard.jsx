@@ -8,6 +8,11 @@ import { useReactToPrint } from "react-to-print"
 import PrintComponent from "./PrintComponent"
 
 export default function AcceptCard(fromthere) {
+
+    const currentDate = new Date();
+    const formattedDate = currentDate.toLocaleDateString(); // Format the date as per your locale
+    const formattedTime = currentDate.toLocaleTimeString(); // Format the time as per your locale
+
     const myredux = useSelector(state => state.form)
     const dispatch = useDispatch()
 
@@ -86,12 +91,21 @@ export default function AcceptCard(fromthere) {
     const [toPay, setToPay] = useState()
     const [amountCollected, setAmountCollected] = useState(false)
     const calculateAmount = () => {
-        setPaymentSaved(false)
+        // setPaymentSaved(false)
         console.log('calculated');
         setSubtotal(Number(myredux?.service_value) + Number(myredux?.socks_value))
-        setToPay(Number(myredux?.service_value) - Number(myredux?.service_value) * Number(myredux?.discount) / 100 + Number(myredux?.socks_value))
-        dispatch(addAmount(Number(myredux?.service_value) - Number(myredux?.service_value) * Number(myredux?.discount) / 100 + Number(myredux?.socks_value)))
-        console.log('sub total->', subTotal, 'calculated total->', myredux?.amount);
+        if (myredux?.payment === "Card") {
+            let amt = Number(myredux?.service_value) - Number(myredux?.service_value) * Number(myredux?.discount) / 100 + Number(myredux?.socks_value);
+            setToPay(amt * 1.02); // Adding 2% to the total amount
+            dispatch(addAmount(amt * 1.02))
+            console.log("card detected, add 2% here", amt * 1.02);
+        }
+        else {
+            setToPay(Number(myredux?.service_value) - Number(myredux?.service_value) * Number(myredux?.discount) / 100 + Number(myredux?.socks_value))
+            console.log("non card payment detected");
+            dispatch(addAmount(Number(myredux?.service_value) - Number(myredux?.service_value) * Number(myredux?.discount) / 100 + Number(myredux?.socks_value)))
+        }
+        console.log('calculated total->', myredux?.amount);
     }
     // calculations end
 
@@ -163,6 +177,15 @@ export default function AcceptCard(fromthere) {
     //     </div>
     // ))
 
+    const checkPrint = () => {
+        if (myredux?.operator === '' || myredux?.service === '' || myredux?.socks === '' || myredux?.payment === '') {
+            console.log('print empty---', myredux);
+        } else {
+            console.log('print success---', myredux)
+            printFunc()
+        }
+    }
+
     const printFunc = async () => {
         const { error } = await supabase.from('bills_printed').insert({
             bill_no: fromthere.item.bill_no,
@@ -189,12 +212,12 @@ export default function AcceptCard(fromthere) {
             .update({ status: 'accepted' })
             .eq('bill_no', fromthere.item.bill_no)
         if (error2) {
-            console.log(error2,'in trampoline master');
+            console.log(error2, 'in trampoline master');
         }
 
         handlePrint();
 
-        
+
     };
     // print end
 
@@ -349,12 +372,13 @@ export default function AcceptCard(fromthere) {
                             payment: myredux.payment,
                             mixed_cash: myredux.mixed_cash,
                             mixed_online: myredux.mixed_online,
-
+                            date: formattedDate,
+                            time: formattedTime,
 
                         }
                     } />
                 </div>
-                <div className="bg-blue-300 mx-auto rounded-xl p-2 pl-3 pr-3" onClick={() => printFunc()}>
+                <div className="bg-blue-300 mx-auto rounded-xl p-2 pl-3 pr-3" onClick={() => checkPrint()}>
                     Print
                 </div>
             </div>
