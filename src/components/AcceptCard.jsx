@@ -202,9 +202,12 @@ export default function AcceptCard(fromthere) {
             payment: myredux.payment,
             mixed_cash: myredux.mixed_cash,
             mixed_online: myredux.mixed_online,
+            date: formattedDate,
+            time: formattedTime,
         })
         if (error) {
             console.log(error, 'in bills_printed');
+            alert('error in printfunc')
         }
 
         const { error2 } = await supabase
