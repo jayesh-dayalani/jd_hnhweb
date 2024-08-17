@@ -1,7 +1,7 @@
 import React from "react";
 
 const PrintComponent = React.forwardRef(({ data }, ref) => (
-    <div ref={ref} style={{ width: '58mm' }}>
+    <div ref={ref} style={{ width: '90mm' }}>
         <div className="w-full">
             <img
                 src="https://i.ibb.co/c8tvX2H/hnhblack.png"
